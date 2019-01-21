@@ -2,57 +2,131 @@ require_relative "../config/environment.rb"
 
 class Student
 
-  attr_accessor :name, :grade
-	attr_reader :id
+ attr_accessor :id, :name, :grade
+
+  def self.new_from_db(row)
+    # create a new Student object given a row from the database
+    new_student = self.new
+		new_student.id = row[0]
+		new_student.name =  row[1]
+		new_student.grade = row[2]
+		new_student
+  end
+
+  def self.all
+    # retrieve all the rows from the "Students" database
+    # remember each row should be a new instance of the Student class
+    sql = <<-SQL
+		      SELECT *
+		      FROM students
+		    SQL
 		
-	def initialize(id=nil, name, grade)
-		@id = id
-		@name = name
-		@album = album
-	end
+		    DB[:conn].execute(sql).map do |row|
+		      self.new_from_db(row)
+		    end
+  end
+
+  def self.find_by_name(name)
+    # find the student in the database given a name
+    # return a new instance of the Student class
+    sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE name = ?
+		      LIMIT 1
+		    SQL
 		
-	def self.create_table
-		    sql =  <<-SQL
-		      CREATE TABLE IF NOT EXISTS songs (
-		        id INTEGER PRIMARY KEY,
-		        name TEXT,
-		        album TEXT
-		        )
-		        SQL
-		    DB[:conn].execute(sql)
-		  end
-		 
-		# updated to avoid duplication
-		  def save
-		    if self.id
-		    	self.update
-		  	else
-		    	sql = <<-SQL
-		      	INSERT INTO songs (name, album)
-		      VALUES (?, ?)
-		    	SQL
-		    	DB[:conn].execute(sql, self.name, self.album)
-		    	@id = DB[:conn].execute("SELECT last_insert_rowid() FROM songs")[0][0]
-		  	end
-		  end
-		 
-		  def self.create(name:, album:)
-		    song = Song.new(name, album)
-		    song.save
-		    song
-		  end
-		 
-		  def self.find_by_name(name)
-		    sql = "SELECT * FROM songs WHERE name = ?"
-		    result = DB[:conn].execute(sql, name)[0]
-		    Song.new(result[0], result[1], result[2])
-		  end
+		    DB[:conn].execute(sql, name).map do |row|
+		      self.new_from_db(row)
+		    end.first
+  end
+  
+  def save
+    sql = <<-SQL
+      INSERT INTO students (name, grade) 
+      VALUES (?, ?)
+    SQL
 
-	# uses id to update all fields whether they have changed or not
-		def update
-		    sql = "UPDATE songs SET name = ?, album = ? WHERE id = ?"
-		    DB[:conn].execute(sql, self.name, self.album, self.id)
-		  end
+    DB[:conn].execute(sql, self.name, self.grade)
+  end
+  
+  def self.create_table
+    sql = <<-SQL
+    CREATE TABLE IF NOT EXISTS students (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      grade TEXT
+    )
+    SQL
 
+    DB[:conn].execute(sql)
+  end
 
+  def self.drop_table
+    sql = "DROP TABLE IF EXISTS students"
+    DB[:conn].execute(sql)
+  end
+  
+  def self.all_students_in_grade_9
+    sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE grade = ?
+		    SQL
+		
+		    DB[:conn].execute(sql, 9).map do |row|
+		      self.new_from_db(row)
+		    end
+		end
+		
+		def self.students_below_12th_grade
+    sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE grade < ?
+		    SQL
+		
+		    DB[:conn].execute(sql, 12).map do |row|
+		      self.new_from_db(row)
+		    end
+		end
+		
+		def self.first_X_students_in_grade_10(num)
+		  sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE grade = ?
+		      LIMIT ?
+		    SQL
+		
+		    DB[:conn].execute(sql, 10, num).map do |row|
+		      self.new_from_db(row)
+		    end
+		end
+		
+		def self.first_student_in_grade_10
+		  sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE grade = ?
+		      LIMIT 1
+		    SQL
+		
+		    DB[:conn].execute(sql, 10).map do |row|
+		      self.new_from_db(row)
+		    end.first
+		end
+		
+		def self.all_students_in_grade_X(grade)
+		  sql = <<-SQL
+		      SELECT *
+		      FROM students
+		      WHERE grade = ?
+		      
+		    SQL
+		
+		    DB[:conn].execute(sql, grade).map do |row|
+		      self.new_from_db(row)
+		    end
+		end
 end
